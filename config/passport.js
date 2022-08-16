@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs')
 const passport = require('passport')
 // 將多傳入 Strategy 物件刪除
 const LocalStrategy = require('passport-local')
@@ -19,7 +20,7 @@ module.exports = app => {
       // 因為上面有註明 passReqToCallback: true，所以第一個參數會是 req
       async (req, email, password, done) => {
         try {
-          const user = await User.findOne({ email, password })
+          const user = await User.findOne({ email })
 
           // 驗證 email、password 任一失敗，且顯示錯誤訊息
           if (!user) {
@@ -32,7 +33,14 @@ module.exports = app => {
           }
 
           // 驗證 email、password 成功，且顯示登入訊息
-          return done(null, user, req.flash('success_msg', '登入成功'))
+          return bcrypt.compare(password, user.password)
+            .then(isMatch => {
+              if (!isMatch) {
+                return done(null, false, req.flash('warning_msg', '帳號或密碼輸入錯誤'))
+              }
+              return done(null, user)
+            })
+            .catch(err => done(err, false))
 
         } catch (error) {
           return done(error)
